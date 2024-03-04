@@ -59,6 +59,8 @@ for tag in tags:
                 fontScale=0.8,
                 color=(0, 0, 255))
     
+    print(tag.pose_t)
+    
 if visualization:
     cv2.imshow('Detected tags', color_img)
 

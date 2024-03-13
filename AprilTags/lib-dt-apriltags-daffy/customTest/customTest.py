@@ -1,6 +1,7 @@
 from dt_apriltags import Detector
 import numpy
 import os
+import pickle
 
 test_images_path = 'pictures'
 
@@ -60,6 +61,8 @@ for tag in tags:
                 color=(0, 0, 255))
     
     print(tag.pose_t)
+    pickle.dump(tag.pose_t, open('pose_t.pkl', 'wb'))
+
     
 if visualization:
     cv2.imshow('Detected tags', color_img)

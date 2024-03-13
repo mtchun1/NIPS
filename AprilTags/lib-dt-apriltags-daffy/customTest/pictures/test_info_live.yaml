@@ -1,7 +1,7 @@
 
 sample_test:
-  file: caliResult2_CUS2.png
+  file: liveVid_Cal.png
   K: [1175.17141, 0, 672.550868, 0, 1158.10934, 317.926964, 0, 0, 1]
   tag_size: 0.127
-  height: 1080
-  width: 1920
+  height: 715
+  width: 1520

@@ -1,0 +1,3 @@
+[console_scripts]
+grab_images=moms_apriltag.bin.grab_images:main
+

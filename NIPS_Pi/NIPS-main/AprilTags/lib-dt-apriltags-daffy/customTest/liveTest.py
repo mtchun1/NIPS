@@ -2,14 +2,19 @@ import sys
 sys.path.append("..")
 
 from dt_apriltags import Detector
+
 import Rotations
+import MatrixMath
+import math
 import numpy
 from datetime import datetime
+
 import os
 import pickle
 
 test_images_path = 'pictures'
 parameter_file_name = 'test_info_live.yaml'
+pickle_parameter_file_name = 'camera_params_pickle'
 
 visualization = True
 try:
@@ -40,11 +45,11 @@ at_detector = Detector(families='tag36h11',
 with open(test_images_path + '/' + parameter_file_name, 'r') as stream:
     parameters = yaml.safe_load(stream)
     
-with open(test_images_path + '/' + 'cameraMatrix.pkl', 'rb') as stream1:
+with open(pickle_parameter_file_name+ '/' + 'cameraMatrix.pkl', 'rb') as stream1:
     cameraMatrix = pickle.load(stream1)
 stream1.close()
 
-with open(test_images_path + '/' + 'dist.pkl', 'rb') as stream2:
+with open(pickle_parameter_file_name+ '/' + 'dist.pkl', 'rb') as stream2:
     dist = pickle.load(stream2)
 stream2.close()
     
@@ -67,7 +72,7 @@ while True:
     
     h,  w = img.shape[:2]
     newCameraMatrix, roi = cv2.getOptimalNewCameraMatrix(cameraMatrix, dist, (w,h), 1, (w,h))
-    pickle.dump(newCameraMatrix, open(test_images_path + '/' + "newCameraMatrix.pkl", "wb" ))
+    pickle.dump(newCameraMatrix, open(pickle_parameter_file_name + '/' + "newCameraMatrix.pkl", "wb" ))
 
     # Undistort
     dst = cv2.undistort(img, cameraMatrix, dist, None, newCameraMatrix)
@@ -79,7 +84,7 @@ while True:
     dst_g = cv2.cvtColor(dst, cv2.COLOR_RGB2GRAY)
     camera_params = ( newCameraMatrix[0,0], newCameraMatrix[1,1], newCameraMatrix[0,2], newCameraMatrix[1,2] )
 
-    cv2.imshow('Original image',dst_g)
+    #cv2.imshow('Original image',img)
 
     tags = at_detector.detect(dst_g, True, camera_params, parameters['sample_test']['tag_size'])
 
@@ -96,14 +101,16 @@ while True:
                     color=(0, 0, 255))
         
         euler = Rotations.dcm2Euler(tag.pose_R)
-        pik = tag.pose_t, euler, datetime.now().strftime("%H%M%S")
+        eulerformat = [[euler[0]], [euler[1]], [euler[2]]]
+        euler_deg = numpy.array(MatrixMath.scalarMultiply(180/math.pi, eulerformat))
+        pik = tag.pose_t, euler_deg, datetime.now().strftime("%H%M%S")
         print(pik)
         pickle.dump(pik, open( "detect.pkl", "wb" ))
 
 
     cv2.imshow('Detected tags', color_img)
-
-    k = cv2.waitKey(5)
+    #cv2.imwrite(test_images_path + '/' + 'detectedTag.png', color_img)
+    k = cv2.waitKey(2)
 
     if k == 27:
         cv2.destroyAllWindows()

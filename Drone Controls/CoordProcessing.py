@@ -2,8 +2,45 @@
 Jimmy Gong (jgong18@ucsc.edu)
 """
 
+import os
 import pickle
+import socket
 
+TCP_IP = '169.233.221.226'#'128.114.51.113'#'169.233.251.220'#'localhost'
+TCP_PORT = 5001
+class ProcessData:
+    def init(self, data = 'This is the Test Pickle Message'):
+        self.data = data
+    def str(self): return self.data
+
+def recvall(sock, count):
+    buf = b''
+    while count:
+        newbuf = sock.recv(count)
+        if not newbuf:
+            print("None Type Error")
+            return None
+        buf += newbuf
+        count -= len(newbuf)
+    return buf
+
+
+class sCoord:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
+tapDur = 200    #ms
+# Galaxy S24, 2340x1080
+up = sCoord(473, 510)
+down = sCoord(473, 810)
+ccw = sCoord(320, 665)
+cw = sCoord(625, 665)
+forward = sCoord(1915, 510)
+backward = sCoord(1915, 810)
+left = sCoord(1760, 665)
+right = sCoord(2065, 665)
+    
 horiThresh = 0.2    #meters
 vertThresh = 0.5    #meters
 rotThresh = 5       #degrees
@@ -101,19 +138,34 @@ def stateMach(X, Y, Z, Yaw, Time):
 cOrder = ['X', 'Y', 'Z', 'Yaw', 'Time']
 newCord = [0, 0, 0, 0, 0]
 oldTime = 0
+
+start = "adb start-server"
+os.system(start)
+
 while (True):
     if (dir != 'check'):
         # for i in range(5):
         #     newCord[i] = float(input(f"New {cOrder[i]}: "))
         
         input("--Ready for Next File--\r\nPress Enter to scan new pkl\r\n")
-        with open('detect.pkl', 'rb') as stream1:
-            pose = pickle.load(stream1)
-            
-        newCord[0] = pose[0][0][0]      # X
-        newCord[1] = pose[0][1][0]      # Y
-        newCord[2] = pose[0][2][0]      # Z
-        newCord[3] = pose[1][0]         # Yaw
+        # with open('detect.pkl', 'rb') as stream1:
+        #     pose = pickle.load(stream1)
+        # print(pose)
+
+        s = socket.socket()
+        s.connect((TCP_IP, TCP_PORT))
+        s.send(bytes('0'.ljust(16), "utf-8"))
+        length = recvall(s, 16)
+        stringData = recvall(s,int(length))
+        PickleFile = pickle.loads(stringData)
+        # print(PickleFile.data)
+        s.close()
+        pose = PickleFile.data
+
+        newCord[0] = pose[0][0][0]      # X in meters
+        newCord[1] = pose[0][1][0]      # Y in meters
+        newCord[2] = pose[0][2][0]      # Z in meters
+        newCord[3] = pose[1][0][0]      # Yaw in degrees
         newCord[4] = pose[2]            # Time
 
     dir, dist = stateMach(newCord[0], newCord[1], newCord[2], newCord[3], newCord[4])
@@ -122,7 +174,24 @@ while (True):
     #print(f"X: {newCord[0]}, Y: {newCord[1]}, Z: {newCord[2]}, Yaw: {newCord[3]}, Time: {newCord[4]}\r\n")
     if (dir != 'check'):
         print(f"\r\nDirection: {dir}, Distance: {dist}\r\n")
+        cmd = ''
+        if (dir == 'up'):
+            cmd = "adb shell input swipe {0} {1} {0} {1} {2}".format(up.x, up.y, tapDur)
+        elif (dir == 'down'):
+            cmd = "adb shell input swipe {0} {1} {0} {1} {2}".format(down.x, down.y, tapDur)
+        elif (dir == 'left'):
+            cmd = "adb shell input swipe {0} {1} {0} {1} {2}".format(left.x, left.y, tapDur)
+        elif (dir == 'right'):
+            cmd = "adb shell input swipe {0} {1} {0} {1} {2}".format(right.x, right.y, tapDur)
+        elif (dir == 'ccw'):
+            cmd = "adb shell input swipe {0} {1} {0} {1} {2}".format(ccw.x, ccw.y, tapDur)
+        elif (dir == 'cw'):
+            cmd = "adb shell input swipe {0} {1} {0} {1} {2}".format(cw.x, cw.y, tapDur)
+        if (cmd != ''):
+            os.system(cmd)
 
     if ((newCord[4] == 0) or (oldCase == 'stateStop')):
+        kill = "adb kill-server"
+        os.system(kill)
         break
 

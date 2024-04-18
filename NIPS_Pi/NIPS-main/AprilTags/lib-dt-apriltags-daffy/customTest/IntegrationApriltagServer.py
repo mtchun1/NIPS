@@ -10,9 +10,16 @@ import MatrixMath
 import math
 
 import socket
+<<<<<<< HEAD
 import os
 import numpy
 import threading
+=======
+import numpy
+import threading
+import os
+from CircularBuffer import RingBuffer
+>>>>>>> d338725 (updated calibration, new integration code, new apriltag code)
 
 try:
     import cv2
@@ -34,6 +41,10 @@ except:
 #Pre-Defines BEGIN
 casetype = "GetPNGtoSend"
 Sample_ControlVector = [2, 0, 0]
+<<<<<<< HEAD
+=======
+CBuff = RingBuffer(10)
+>>>>>>> d338725 (updated calibration, new integration code, new apriltag code)
 
 #Pre-Defines END
 
@@ -62,6 +73,7 @@ with open(pickle_parameter_file_name+ '/' + 'dist.pkl', 'rb') as stream2:
     dist = pickle.load(stream2)
 stream2.close()
     
+<<<<<<< HEAD
 cap = cv2.VideoCapture(0)
 width = 1280
 height = 720
@@ -70,12 +82,34 @@ cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
 num = 0
 #April Tag Pre-Defines END
 
+=======
+#April Tag Pre-Defines END
+
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+sock.close()
+
+>>>>>>> d338725 (updated calibration, new integration code, new apriltag code)
 #TCP Initialize
 TCP_IP = "128.114.51.113"
 TCP_PORT = 5001
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+<<<<<<< HEAD
 sock.bind((TCP_IP, TCP_PORT))
 sock.listen(5)
+=======
+try:
+    sock.bind((TCP_IP, TCP_PORT))
+    sock.listen(5)
+except:
+    sock.close()
+    print("FAILED")
+    
+cap = cv2.VideoCapture(0)
+width = 1280
+height = 720
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+>>>>>>> d338725 (updated calibration, new integration code, new apriltag code)
 
 #Class Pickle Class
 class ProcessData:
@@ -98,7 +132,11 @@ def recvall(sock, count):
 def handle_client(s):
     match casetype:
         case "GetPNGtoSend":
+<<<<<<< HEAD
             capture = cv2.VideoCapture(0)
+=======
+            capture = cv2.VideoCapture(1)
+>>>>>>> d338725 (updated calibration, new integration code, new apriltag code)
             capture.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
             capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
             
@@ -124,6 +162,7 @@ def handle_client(s):
             s.close()
         
         case 'Apriltag':
+<<<<<<< HEAD
             succes, img = cap.read()
 
             # img = cv2.imread(test_images_path+'/'+parameters['sample_test']['file'], cv2.IMREAD_GRAYSCALE)
@@ -186,6 +225,94 @@ while(True):
         casetype = 'Apriltag'
     threading.Thread(target = handle_client, args = (c,)).start()
     
+=======
+            try: 
+                num = 0
+                succes, img = cap.read()
+
+                # img = cv2.imread(test_images_path+'/'+parameters['sample_test']['file'], cv2.IMREAD_GRAYSCALE)
+                #img = cv2.imread(test_images_path+'/'+parameters['sample_test']['file'], cv2.IMREAD_GRAYSCALE)
+
+                # cameraMatrix = numpy.array(parameters['sample_test']['K']).reshape((3,3))
+                #Calibration = datetime.now().strftime("%S")
+                h,  w = img.shape[:2]
+                newCameraMatrix, roi = cv2.getOptimalNewCameraMatrix(cameraMatrix, dist, (w,h), 1, (w,h))
+                pickle.dump(newCameraMatrix, open(pickle_parameter_file_name + '/' + "newCameraMatrix.pkl", "wb" ))
+
+                # Undistort
+                dst = cv2.undistort(img, cameraMatrix, dist, None, newCameraMatrix)
+
+                # crop the image
+                x, y, w, h = roi
+                dst = dst[y:y+h, x:x+w]
+                
+                dst_g = cv2.cvtColor(dst, cv2.COLOR_RGB2GRAY)
+                camera_params = ( newCameraMatrix[0,0], newCameraMatrix[1,1], newCameraMatrix[0,2], newCameraMatrix[1,2] )
+
+                #cv2.imshow('Original image',img)
+
+                tags = at_detector.detect(dst_g, True, camera_params, parameters['sample_test']['tag_size'])
+
+                color_img = cv2.cvtColor(dst_g, cv2.COLOR_GRAY2RGB)
+                #print("Calibration: ", datetime.now().strftime("%S") - Calibration)
+                
+                #Forloop = datetime.now().strftime("%S")
+                for tag in tags:
+                    for idx in range(len(tag.corners)):
+                        cv2.line(color_img, tuple(tag.corners[idx-1, :].astype(int)), tuple(tag.corners[idx, :].astype(int)), (0, 255, 0))
+
+                    cv2.putText(color_img, str(tag.tag_id),
+                                org=(tag.corners[0, 0].astype(int)+10,tag.corners[0, 1].astype(int)+10),
+                                fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+                                fontScale=0.8,
+                                color=(0, 0, 255))
+                    
+                    euler = Rotations.dcm2Euler(tag.pose_R)
+                    eulerformat = [[euler[0]], [euler[1]], [euler[2]]]
+                    euler_deg = numpy.array(MatrixMath.scalarMultiply(180/math.pi, eulerformat))
+                    
+                    pik = tag.pose_t, euler_deg, datetime.now().strftime("%f")
+                    pickle.dump(pik, open( "detect.pkl", "wb" ))
+                #print("Forloop: ", datetime.now().strftime("%S") - Forloop)
+                with open("detect.pkl", 'rb') as f:
+                    data = pickle.load(f)
+                    Pickled_Data = pickle.dumps(ProcessData(data))
+                    s.send( bytes(str(len(Pickled_Data)).ljust(16), 'utf-8'))
+                    s.send(Pickled_Data)
+                    s.close()
+                    print(data)
+                    
+            except KeyboardInterrupt:
+                sock.close()
+                
+            except:
+                print("DIED Here")
+                sock.close()
+
+        case _:
+            sock.close()
+
+try:
+    while(True):
+        print('Waiting For Connection...')
+        c, addr = sock.accept()
+        print("Connection from", addr, '\n')
+        length = recvall(c, 16)
+        if (int(length) == 0):
+            casetype = 'RX&TXControlInfo'
+        elif (int(length) == 1):
+            casetype = 'Apriltag'
+        #casetype = 'Apriltag'
+        #threading.Thread(target = handle_client, args = (c,)).start()
+        handle_client(c)
+        
+except KeyboardInterrupt:
+    sock.close()
+    
+except:
+    print("Death")
+    sock.close()
+>>>>>>> d338725 (updated calibration, new integration code, new apriltag code)
     
     
     

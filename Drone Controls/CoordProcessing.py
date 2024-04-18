@@ -5,8 +5,15 @@ Jimmy Gong (jgong18@ucsc.edu)
 import os
 import pickle
 import socket
+import time
+from datetime import datetime
 
-TCP_IP = '169.233.221.226'#'128.114.51.113'#'169.233.251.220'#'localhost'
+TCP_IP = '128.114.51.113'
+# TCP_IP = '169.233.221.226'
+# TCP_IP = '169.233.251.220'
+# TCP_IP = '169.233.192.251'
+# TCP_IP = '192.168.100.237'
+# TCP_IP = 'localhost'
 TCP_PORT = 5001
 class ProcessData:
     def init(self, data = 'This is the Test Pickle Message'):
@@ -30,7 +37,7 @@ class sCoord:
         self.x = x
         self.y = y
 
-tapDur = 200    #ms
+tapDur = 500    #ms
 # Galaxy S24, 2340x1080
 up = sCoord(473, 510)
 down = sCoord(473, 810)
@@ -41,10 +48,12 @@ backward = sCoord(1915, 810)
 left = sCoord(1760, 665)
 right = sCoord(2065, 665)
     
-horiThresh = 0.2    #meters
-vertThresh = 0.5    #meters
+horiThresh = 0.05    #meters
+vertThresh = 0.00    #meters
 rotThresh = 5       #degrees
-downtime = 3
+downtime = 20
+off_x = 0.1         #meters
+off_y = 0.05         #meters
 
 cases = ['stateX', 'stateY', 'stateZ', 'stateCheck', 'stateStop', 'stateRotAlign', 'stateLost']
 nextCase = cases[3]
@@ -58,14 +67,14 @@ def stateMach(X, Y, Z, Yaw, Time):
     global nextCase
     global oldCase
     global downtime
-    match nextCase:     # **need to start with rot align**
+    match nextCase:
         case 'stateRotAlign':
             nextCase = cases[3]     #stateCheck
             oldCase = cases[5]      #stateRotAlign
             if (Yaw > rotThresh):
-                dir_out = directions[8]
+                dir_out = directions[8]     #ccw
             elif (Yaw < -rotThresh):
-                dir_out = directions[7]
+                dir_out = directions[7]     #cw
             else:
                 dir_out = directions[6]     #hold
             return dir_out, abs(Yaw)
@@ -73,9 +82,9 @@ def stateMach(X, Y, Z, Yaw, Time):
             nextCase = cases[3]     #stateCheck
             oldCase = cases[0]      #stateX
             if (X > horiThresh):
-                dir_out = directions[3]     #left
-            elif (X < -horiThresh):
                 dir_out = directions[2]     #right
+            elif (X < -horiThresh):
+                dir_out = directions[3]     #left
             else:
                 dir_out = directions[6]     #hold
             return dir_out, abs(X)
@@ -138,32 +147,48 @@ def stateMach(X, Y, Z, Yaw, Time):
 cOrder = ['X', 'Y', 'Z', 'Yaw', 'Time']
 newCord = [0, 0, 0, 0, 0]
 oldTime = 0
+prevT = 0
 
-start = "adb start-server"
-os.system(start)
+
+# Test with Phone:
+phone = False
+
+if (phone):
+    start = "adb start-server"
+    os.system(start)
+
+# s = socket.socket()
+# s.connect((TCP_IP, TCP_PORT))
+
+
+# s.send(bytes('1'.ljust(16), "utf-8"))
 
 while (True):
     if (dir != 'check'):
         # for i in range(5):
         #     newCord[i] = float(input(f"New {cOrder[i]}: "))
         
-        input("--Ready for Next File--\r\nPress Enter to scan new pkl\r\n")
+        # input("--Ready for Next File--\r\nPress Enter to scan new pkl\r\n")
+        # time.sleep(0.05)
+
         # with open('detect.pkl', 'rb') as stream1:
         #     pose = pickle.load(stream1)
         # print(pose)
 
         s = socket.socket()
         s.connect((TCP_IP, TCP_PORT))
-        s.send(bytes('0'.ljust(16), "utf-8"))
+        s.send(bytes('1'.ljust(16), "utf-8"))
         length = recvall(s, 16)
-        stringData = recvall(s,int(length))
-        PickleFile = pickle.loads(stringData)
+        if (type(length) == bytes):
+            global PickleFile
+            stringData = recvall(s,int(length))
+            PickleFile = pickle.loads(stringData)
         # print(PickleFile.data)
-        s.close()
+        #s.close()
         pose = PickleFile.data
 
-        newCord[0] = pose[0][0][0]      # X in meters
-        newCord[1] = pose[0][1][0]      # Y in meters
+        newCord[0] = pose[0][0][0] + off_x     # X in meters
+        newCord[1] = pose[0][1][0] + off_y     # Y in meters
         newCord[2] = pose[0][2][0]      # Z in meters
         newCord[3] = pose[1][0][0]      # Yaw in degrees
         newCord[4] = pose[2]            # Time
@@ -173,25 +198,38 @@ while (True):
 
     #print(f"X: {newCord[0]}, Y: {newCord[1]}, Z: {newCord[2]}, Yaw: {newCord[3]}, Time: {newCord[4]}\r\n")
     if (dir != 'check'):
-        print(f"\r\nDirection: {dir}, Distance: {dist}\r\n")
+        print(f"\r\nDirection: {dir}, Distance: {dist}")
+        newT = int(datetime.now().strftime("%S"))
+        elap = newT - prevT
+        if (elap < 0):
+            elap =+ 60
+        print("Seconds since Tag:", elap, "\r\n")
+        prevT = newT
         cmd = ''
-        if (dir == 'up'):
-            cmd = "adb shell input swipe {0} {1} {0} {1} {2}".format(up.x, up.y, tapDur)
-        elif (dir == 'down'):
-            cmd = "adb shell input swipe {0} {1} {0} {1} {2}".format(down.x, down.y, tapDur)
-        elif (dir == 'left'):
-            cmd = "adb shell input swipe {0} {1} {0} {1} {2}".format(left.x, left.y, tapDur)
-        elif (dir == 'right'):
-            cmd = "adb shell input swipe {0} {1} {0} {1} {2}".format(right.x, right.y, tapDur)
-        elif (dir == 'ccw'):
-            cmd = "adb shell input swipe {0} {1} {0} {1} {2}".format(ccw.x, ccw.y, tapDur)
-        elif (dir == 'cw'):
-            cmd = "adb shell input swipe {0} {1} {0} {1} {2}".format(cw.x, cw.y, tapDur)
+        if (phone):
+            if (dir == 'up'):
+                cmd = "adb shell input swipe {0} {1} {0} {1} {2}".format(up.x, up.y, tapDur)
+            elif (dir == 'down'):
+                cmd = "adb shell input swipe {0} {1} {0} {1} {2}".format(down.x, down.y, tapDur)
+            elif (dir == 'left'):
+                cmd = "adb shell input swipe {0} {1} {0} {1} {2}".format(left.x, left.y, tapDur)
+            elif (dir == 'right'):
+                cmd = "adb shell input swipe {0} {1} {0} {1} {2}".format(right.x, right.y, tapDur)
+            elif (dir == 'forward'):
+                cmd = "adb shell input swipe {0} {1} {0} {1} {2}".format(forward.x, forward.y, tapDur)
+            elif (dir == 'backward'):
+                cmd = "adb shell input swipe {0} {1} {0} {1} {2}".format(backward.x, backward.y, tapDur)
+            elif (dir == 'ccw'):
+                cmd = "adb shell input swipe {0} {1} {0} {1} {2}".format(ccw.x, ccw.y, tapDur)
+            elif (dir == 'cw'):
+                cmd = "adb shell input swipe {0} {1} {0} {1} {2}".format(cw.x, cw.y, tapDur)
+            
         if (cmd != ''):
             os.system(cmd)
 
-    if ((newCord[4] == 0) or (oldCase == 'stateStop')):
-        kill = "adb kill-server"
-        os.system(kill)
-        break
+    if (phone):
+        if ((newCord[4] == 0) or (oldCase == 'stateStop')):
+            kill = "adb kill-server"
+            os.system(kill)
+            break
 

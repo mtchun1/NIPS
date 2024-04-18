@@ -2,6 +2,6 @@
 sample_test:
   file: liveVid_Cal.png
   K: [1175.17141, 0, 672.550868, 0, 1158.10934, 317.926964, 0, 0, 1]
-  tag_size: 0.127
+  tag_size: 0.0385
   height: 715
   width: 1520

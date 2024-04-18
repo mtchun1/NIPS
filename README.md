@@ -10,3 +10,10 @@ $ python3 -m pip install <new_module>
 
 Bind camera to WSL
 https://learn.microsoft.com/en-us/windows/wsl/connect-usb
+
+#Create Virtual Environment
+$ python -m venv [Environment Name]
+
+$ source [Environment Name]/bin/activate
+
+$ pip install numpy dt-apriltags PyYAML opencv-python

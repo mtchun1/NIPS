@@ -37,10 +37,10 @@ If camera index is not found make sure usb is connected or change index for came
 
 ## Camera Calibration
 Before detecting any AprilTags can be detected the camera must be calibrated.  This gives a camera matrix which provides:
--fx, focal length in the x direction
--fy, focal length in the y direction
--cx, focal center in the x direction
--cy, focal center in the y direction
+ - fx, focal length in the x direction
+ - fy, focal length in the y direction
+ - cx, focal center in the x direction
+ - cy, focal center in the y direction
 
 To calibrate first take 15-20 photos of [checker board image](https://github.com/opencv/opencv/blob/4.x/doc/pattern.png) at different points in the frame.  You should also rotate the image to ensure a complete calibration.  Its recommended that this image in printed, however I pulled it up on my ipad.
 Next change the width and height on lines 4 and 5 to your desired resolution.
@@ -69,8 +69,8 @@ Next run the following command
 $ python calibration.py
 ```
 This script will print out distorted camera matrix (first) and an undistored camera matrix (second).  Additionally a couple pickle files will be saved
--cameraMatrix.pkl, Distored Camera Matrix
--dist.pkl Distortion Matrix 
+ - cameraMatrix.pkl, Distored Camera Matrix
+ - dist.pkl Distortion Matrix 
 
 The Undistored Camera Matrix is not stored as a pkl file, however this can be added with the following line after line 75.
 ```

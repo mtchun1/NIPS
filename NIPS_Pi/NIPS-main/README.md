@@ -21,6 +21,10 @@ $ pip install opencv-python
 $ pip install PyYAML
 $ pip install dt-apriltags
 ```
+To exit the environment type
+```
+$ deactivate
+```
 ## AprilTags
 For testing of AprilTag navigate to 
 NIPS\NIPS_Pi\NIPS-main\AprilTags\lib-dt-apriltags-daffy\customTest

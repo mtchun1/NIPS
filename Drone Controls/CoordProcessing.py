@@ -187,11 +187,19 @@ while (True):
         #s.close()
         pose = PickleFile.data
 
-        newCord[0] = pose[0][0][0] + off_x     # X in meters
-        newCord[1] = pose[0][1][0] + off_y     # Y in meters
-        newCord[2] = pose[0][2][0]      # Z in meters
-        newCord[3] = pose[1][0][0]      # Yaw in degrees
-        newCord[4] = pose[2]            # Time
+        if (pose == None):
+            pose = [0, [[0], [0], [0]], [[0], [0], [0]], oldTime]
+            pose[1][0][0] = 0
+            pose[1][1][0] = 0
+            pose[1][2][0] = 0
+            pose[2][0][0] = 0
+
+        # newCord[0]
+        newCord[0] = pose[1][0][0] + off_x     # X in meters
+        newCord[1] = pose[1][1][0] + off_y     # Y in meters
+        newCord[2] = pose[1][2][0]      # Z in meters
+        newCord[3] = pose[2][0][0]      # Yaw in degrees
+        newCord[4] = pose[3]            # Time
 
     dir, dist = stateMach(newCord[0], newCord[1], newCord[2], newCord[3], newCord[4])
     oldTime = newCord[4]

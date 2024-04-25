@@ -1,15 +1,17 @@
 import cv2
+from picamera2 import Picamera2
 
-cap = cv2.VideoCapture(0)
+cv2.startWindowThread()
 width = 1280
 height = 720
-cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+cap = Picamera2()
+cap.configure(cap.create_preview_configuration(main={"format": 'XRGB8888', "size": (width, height)}))
+cap.start()
 num = 0
 
-while cap.isOpened():
+while True:
 
-    succes, img = cap.read()
+    img = cap.capture_array()
 
     k = cv2.waitKey(5)
 

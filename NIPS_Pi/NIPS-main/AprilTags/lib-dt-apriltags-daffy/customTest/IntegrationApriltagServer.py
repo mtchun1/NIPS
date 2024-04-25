@@ -80,15 +80,12 @@ at_detector_out = Detector(families='tagCustom48h12',
                        decode_sharpening=0.25,
                        debug=0)
     
-#cap = cv2.VideoCapture(0)
 cv2.startWindowThread()
 width = 1280
 height = 720
 cap = Picamera2()
 cap.configure(cap.create_preview_configuration(main={"format": 'XRGB8888', "size": (width, height)}))
 cap.start()
-#cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
-#cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
 num = 0
 
 #TCP Initialize
@@ -128,12 +125,7 @@ def handle_client(s):
             try: 
                 num = 0
                 img = cap.capture_array()
-
-                # img = cv2.imread(test_images_path+'/'+parameters['usb_webcam']['file'], cv2.IMREAD_GRAYSCALE)
-                #img = cv2.imread(test_images_path+'/'+parameters['usb_webcam'']['file'], cv2.IMREAD_GRAYSCALE)
-
-                # cameraMatrix = numpy.array(parameters['usb_webcam'']['K']).reshape((3,3))
-                #Calibration = datetime.now().strftime("%S")
+                
                 h,  w = img.shape[:2]
                 newCameraMatrix, roi = cv2.getOptimalNewCameraMatrix(cameraMatrix, dist, (w,h), 1, (w,h))
                 # Save pickle for new Camera Matrix
@@ -159,6 +151,7 @@ def handle_client(s):
                 Pickled_Data = 0
                 #Forloop = datetime.now().strftime("%S")
                 for tag in tags:
+                    # Draw Box around AprilTag
                     for idx in range(len(tag.corners)):
                         cv2.line(color_img, tuple(tag.corners[idx-1, :].astype(int)), tuple(tag.corners[idx, :].astype(int)), (0, 255, 0))
 
@@ -168,10 +161,12 @@ def handle_client(s):
                                 fontScale=0.8,
                                 color=(0, 0, 255))
                     
+                    # Rotation Matrix to Euler Angles of tag
                     euler = Rotations.dcm2Euler(tag.pose_R)
                     eulerformat = [[euler[0]], [euler[1]], [euler[2]]]
                     euler_deg = numpy.array(MatrixMath.scalarMultiply(180/math.pi, eulerformat))
                     
+                    # Data inside Pickle
                     pik = tag.pose_t, euler_deg, datetime.now().strftime("%f")
                 
                     pickle.dump(pik, open( "detect.pkl", "wb" ))

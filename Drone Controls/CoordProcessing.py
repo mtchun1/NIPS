@@ -6,6 +6,7 @@ import os
 import pickle
 import socket
 import time
+import math
 from datetime import datetime
 
 TCP_IP = '128.114.51.113'
@@ -194,9 +195,11 @@ while (True):
             pose[1][2][0] = 0
             pose[2][0][0] = 0
 
-        # newCord[0]
-        newCord[0] = pose[1][0][0] + off_x     # X in meters
-        newCord[1] = pose[1][1][0] + off_y     # Y in meters
+        # newCord[0]    # ID?    # Tag Family?
+        # newCord[0] = pose[1][0][0] + off_x     # X in meters
+        newCord[0] = math.tan(pose[2][2][0]) * pose[1][2][0]    # X = tan(roll) * Z
+        # newCord[1] = pose[1][1][0] + off_y     # Y in meters
+        newCord[1] = math.tan(pose[2][1][0]) * pose[1][2][0]    # Y = tan(pitch) * Z
         newCord[2] = pose[1][2][0]      # Z in meters
         newCord[3] = pose[2][0][0]      # Yaw in degrees
         newCord[4] = pose[3]            # Time

@@ -52,8 +52,8 @@ horiThresh = 0.05    #meters
 vertThresh = 0.00    #meters
 rotThresh = 5       #degrees
 downtime = 20
-off_x = 0.1         #meters
-off_y = 0.05         #meters
+off_x = 0.0         #meters
+off_y = 0.0         #meters
 
 cases = ['stateX', 'stateY', 'stateZ', 'stateCheck', 'stateStop', 'stateRotAlign', 'stateLost']
 nextCase = cases[3]
@@ -207,11 +207,11 @@ while (True):
     #print(f"X: {newCord[0]}, Y: {newCord[1]}, Z: {newCord[2]}, Yaw: {newCord[3]}, Time: {newCord[4]}\r\n")
     if (dir != 'check'):
         print(f"\r\nDirection: {dir}, Distance: {dist}")
-        newT = int(datetime.now().strftime("%S"))
-        elap = newT - prevT
-        if (elap < 0):
-            elap =+ 60
-        print("Seconds since Tag:", elap, "\r\n")
+        newT = int(datetime.now().strftime("%f"))
+        elap = int(newT - prevT)
+        # if (elap < 0):
+            # elap =+ 1000000
+        print("ms since Tag:", elap/1000, "\r\n")
         prevT = newT
         cmd = ''
         if (phone):

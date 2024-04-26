@@ -19,18 +19,18 @@ This directory holds all the necessary files to run color tracking, triangulatio
 	-PIL
 
 4. Ensure that lines 34 and 35 are set to the correct cameras according to left and right.
-
+```
 $ cap_right = cv2.VideoCapture(1)                    
 $ cap_left =  cv2.VideoCapture(0)
-
+```
 5. Run stereoVision.py in terminal.
-
+```
 $ python3 stereoVision.py
-
+```
 6. Run livePlot.py in terminal.
-
+```
 $ python3 livePlot.py
-
+```
 7. Press 'p' to begin tracking and plotting data.
 
 8. Store data in data.csv in another folder and delete contents below 'x_value,y_value,z_value' to reset

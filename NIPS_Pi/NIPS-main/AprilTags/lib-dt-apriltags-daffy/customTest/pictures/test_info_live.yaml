@@ -4,6 +4,7 @@ usb_webcam:
   K: [1175.17141, 0, 672.550868, 0, 1158.10934, 317.926964, 0, 0, 1]
   family_out: 'tagCustom48h12'
   family_in: 'tag36h11'
-  tag_size: 0.0385
+  tag_size_in: 0.0287
+  tag_size_out: 0.153
   height: 711
   width: 1274

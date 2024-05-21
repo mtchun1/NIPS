@@ -14,6 +14,7 @@ import os
 import numpy
 
 from picamera2 import Picamera2
+from libcamera import controls
 from CircularBuffer import RingBuffer
 
 try:
@@ -34,7 +35,7 @@ except:
     raise Exception('You need yaml in order to run the tests. However, you can still use the library without it.')
 
 #Pre-Defines BEGIN
-casetype = "GetPNGtoSend"
+casetype = "Apriltag"
 Sample_ControlVector = [2, 0, 0]
 CBuff = RingBuffer(10)
 #pik = (0, 10)
@@ -73,7 +74,7 @@ at_detector_in = Detector(families=family_in,
                        
 at_detector_out = Detector(families='tagCustom48h12',
                        nthreads=1,
-                       max_hamming=1,
+                       max_hamming=0,
                        quad_decimate=1.0,
                        quad_sigma=0.0,
                        refine_edges=1,
@@ -81,24 +82,29 @@ at_detector_out = Detector(families='tagCustom48h12',
                        debug=0)
     
 cv2.startWindowThread()
-width = 1280
-height = 720
+width = 680
+height = 480
 cap = Picamera2()
 cap.configure(cap.create_preview_configuration(main={"format": 'XRGB8888', "size": (width, height)}))
+cap.set_controls({"AfMode": controls.AfModeEnum.Continuous})
 cap.start()
+color_img = 0
 num = 0
 
 #TCP Initialize
-TCP_IP = "128.114.51.113"
+TCP_IP = "169.233.228.202"
+#TCP_IP = "172.20.10.4"
+#TCP_IP = "192.168.100.216"
 TCP_PORT = 5001
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 try:
     sock.bind((TCP_IP, TCP_PORT))
     sock.listen(5)
+    #sock.setblocking(0)
 except:
     sock.close()
-    print("FAILED")
+    print("Failed to Initialize Socket")
     
 
 #Class Pickle Class
@@ -122,10 +128,11 @@ def recvall(sock, count):
 def handle_client(s):
     match casetype:
         case 'Apriltag':
-            try: 
+            try:
+                oldDataTime = int(datetime.now().microsecond)
+                #print(oldDataTime)
                 num = 0
                 img = cap.capture_array()
-                
                 h,  w = img.shape[:2]
                 newCameraMatrix, roi = cv2.getOptimalNewCameraMatrix(cameraMatrix, dist, (w,h), 1, (w,h))
                 # Save pickle for new Camera Matrix
@@ -140,13 +147,19 @@ def handle_client(s):
                 
                 dst_g = cv2.cvtColor(dst, cv2.COLOR_RGB2GRAY)
                 camera_params = ( newCameraMatrix[0,0], newCameraMatrix[1,1], newCameraMatrix[0,2], newCameraMatrix[1,2] )
-
+                
                 #cv2.imshow('Original image',img)
+                tags = at_detector_out.detect(dst_g, True, camera_params, parameters['usb_webcam']['tag_size_out'])
+                tags = tags + at_detector_in.detect(dst_g, True, camera_params, parameters['usb_webcam']['tag_size_in'])
+                newDataTime = int(datetime.now().microsecond)
 
-                tags = at_detector_out.detect(dst_g, True, camera_params, parameters['usb_webcam']['tag_size'])
-                tags = tags + at_detector_in.detect(dst_g, True, camera_params, parameters['usb_webcam']['tag_size'])
-
+                if newDataTime > oldDataTime:
+                    elapDataTime = int((newDataTime - oldDataTime))
+                    print("Tag Time: ", elapDataTime)
+                else:
+                    print("Tag Time: ", (1000000 - oldDataTime) + newDataTime)
                 color_img = cv2.cvtColor(dst_g, cv2.COLOR_GRAY2RGB)
+                
                 #print("Calibration: ", datetime.now().strftime("%S") - Calibration)
                 Pickled_Data = 0
                 #Forloop = datetime.now().strftime("%S")
@@ -154,7 +167,7 @@ def handle_client(s):
                     # Draw Box around AprilTag
                     for idx in range(len(tag.corners)):
                         cv2.line(color_img, tuple(tag.corners[idx-1, :].astype(int)), tuple(tag.corners[idx, :].astype(int)), (0, 255, 0))
-
+                        
                     cv2.putText(color_img, str(tag.tag_id),
                                 org=(tag.corners[0, 0].astype(int)+10,tag.corners[0, 1].astype(int)+10),
                                 fontFace=cv2.FONT_HERSHEY_SIMPLEX,
@@ -164,44 +177,54 @@ def handle_client(s):
                     # Rotation Matrix to Euler Angles of tag
                     euler = Rotations.dcm2Euler(tag.pose_R)
                     eulerformat = [[euler[0]], [euler[1]], [euler[2]]]
-                    euler_deg = numpy.array(MatrixMath.scalarMultiply(180/math.pi, eulerformat))
+                    #euler_deg = numpy.array(MatrixMath.scalarMultiply(180/math.pi, eulerformat))
                     
                     # Data inside Pickle
-                    pik = tag.pose_t, euler_deg, datetime.now().strftime("%f")
-                
-                    pickle.dump(pik, open( "detect.pkl", "wb" ))
-                    Pickled_Data = pickle.dumps(ProcessData(pik))
+                    pik = tag.tag_id, tag.pose_t, eulerformat, datetime.now().strftime("%f")
+                    
+                    print(pik)
+                    #pickle.dump(pik, open( "detect.pkl", "wb" ))
+                    Pickled_Data = pickle.dumps(ProcessData(pik))  
+                    #print(pik)
+                cv2.imshow('Detected tags', color_img)
+                newDataTime = int(datetime.now().microsecond)
+
+                if newDataTime > oldDataTime:
+                    elapDataTime = int((newDataTime - oldDataTime))
+                    print("Process Tag Time: ", elapDataTime)
+                else:
+                    print("Process Tag Time: ", (1000000 - oldDataTime) + newDataTime)
+                    
                     
                 if len(tags) == 0:
                     print("No Tag")
                     Pickled_Data = pickle.dumps(ProcessData())
-                #print("Forloop: ", datetime.now().strftime("%S") - Forloop)
-                #with open("detect.pkl", 'rb') as f:
-                    #data = pickle.load(f)
-                    #print(data) 
                 
+                oldDataTime = int(datetime.now().microsecond)
                 s.send( bytes(str(len(Pickled_Data)).ljust(16), 'utf-8'))
                 s.send(Pickled_Data)
+                newDataTime = int(datetime.now().microsecond)
+                if newDataTime > oldDataTime:
+                    elapDataTime = int((newDataTime - oldDataTime))
+                    print("Send Data Time: ", elapDataTime)
+                else:
+                    print("Send Data Time: ", (1000000 - oldDataTime) + newDataTime)
                 s.close()
-                cv2.imshow('Detected tags', color_img)
     #cv2.imwrite(test_images_path + '/' + 'detectedTag.png', color_img)
                     
             except KeyboardInterrupt:
                 sock.close()
                 
-            except:
-                print("DIED Here")
-                sock.close()
 
         case _:
             sock.close()
 
 try:
     while(True):
-        print('Waiting For Connection...')
+        print("Waiting For Connection...")
         c, addr = sock.accept()
-        print("Connection from", addr, '\n')
         length = recvall(c, 16)
+        print("Connection from", addr, '\n')
         if (int(length) == 1):
             casetype = 'Apriltag'
         #casetype = 'Apriltag'
@@ -209,6 +232,7 @@ try:
         handle_client(c)
         k = cv2.waitKey(2)
         if k == 27:
+            sock.close()
             cv2.destroyAllWindows()
             break
         
@@ -216,9 +240,6 @@ except KeyboardInterrupt:
     print("Keyboard Interrupted Properly")
     sock.close()
     
-except:
-    print("Death")
-    sock.close()
     
     
     
